@@ -27,6 +27,7 @@
 
 void termination_handler(int s)
 {
+    debug(LOG_DEBUG, "Termination handler called");
     if(running_daemon)
     {
         MHD_stop_daemon(running_daemon);
@@ -140,51 +141,14 @@ void parse_commandline(int argc, char **argv)
 
 void mainloop(void)
 {
-    fd_set rs, ws, es;
-    int  max;
-    unsigned MHD_LONG_LONG mhd_timeout;
-    struct timeval tv;
-
-    while(1)
-    {
-        FD_ZERO(&rs);
-        FD_ZERO(&ws);
-        FD_ZERO(&es);
-        max = 0;
-        tv.tv_sec = 1;
-        tv.tv_usec= 0;
-
-
-        if (MHD_YES != MHD_get_fdset(running_daemon, &rs, &es, &es, &max))
-            break;
-        if (MHD_get_timeout(running_daemon, &mhd_timeout) == MHD_YES)
-        {
-            tv.tv_sec = mhd_timeout / 1000LL;
-            tv.tv_usec = (mhd_timeout - (tv.tv_sec * 1000LL)) * 1000LL;
-        }
-
-        select(max + 1, &rs, &ws, &es, &tv);
-
-        MHD_run(running_daemon);
-    }
-    MHD_stop_daemon(running_daemon);
-    exit(1);
-}
-
-int main(int argc,char **argv)
-{
-    as_daemon = 1;
-    debuglevel= LOG_INFO;
-
-    parse_commandline(argc, argv);
-
-    debug(LOG_INFO, "HTTPSRedir " VERSION " (build " BUILDDATE ") is starting on port %d.", PORT );
+    debug(LOG_DEBUG, "In mainloop");
 
     running_daemon = MHD_start_daemon(
-            MHD_USE_SSL,
+            MHD_USE_THREAD_PER_CONNECTION | MHD_USE_SSL | MHD_USE_SELECT_INTERNALLY,
             PORT,
             NULL, NULL,
             &answer_to_connection, NULL,
+            MHD_OPTION_THREAD_POOL_SIZE, 100,
             MHD_OPTION_HTTPS_MEM_CERT, SERVERCERTFILE,
             MHD_OPTION_HTTPS_MEM_KEY, SERVERKEYFILE,
             MHD_OPTION_END);
@@ -195,6 +159,20 @@ int main(int argc,char **argv)
         return 1;
     }
 
+    while(1)
+        pause();
+}
+
+
+int main(int argc,char **argv)
+{
+    as_daemon = 1;
+    debuglevel= LOG_INFO;
+
+    parse_commandline(argc, argv);
+
+    debug(LOG_INFO, "HTTPSRedir " VERSION " (build " BUILDDATE ") is starting on port %d.", PORT );
+
     if(1 == as_daemon)
     {
         init_signals();
@@ -202,9 +180,12 @@ int main(int argc,char **argv)
         switch(fork())
         {
             case 0:
+                debug(LOG_DEBUG, "In forked child, starting mainloop");
                 mainloop();
                 break;
             case 1:
+                debug(LOG_DEBUG, "Exiting parent process");
+
                 exit(0);
                 break;
             case -1:
@@ -212,5 +193,6 @@ int main(int argc,char **argv)
                 break;
         }
     }
-    mainloop();
+    else
+        mainloop();
 }
