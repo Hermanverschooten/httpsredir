@@ -1,0 +1,8 @@
+# ParcWay configuration
+menu "Configuration"
+	depends on PACKAGE_httpsredir
+
+config HTTPSREDIR_PORT
+	string "Port to listen on:"
+	default "8888"
+endmenu
