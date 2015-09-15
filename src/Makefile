@@ -1,13 +1,14 @@
 FILENAME = httpsredir
 
-CFLAGS  = $(CFLAGS) -I$(STAGING_DIR)/usr/include
-LDFLAGS = $(LDFLAGS) -lmicrohttpd -Wl,-rpath-link=$(STAGING_DIR)/usr/lib
+H_CFLAGS  = $(CFLAGS) -I$(STAGING_DIR)/usr/include
+H_LDFLAGS = $(LDFLAGS) -lmicrohttpd -Wl,-rpath-link=$(STAGING_DIR)/usr/lib
 
-OBJ = httpsredir.c
+OBJ = httpsredir.o debug.o
 
 all:
-	$(CC) $(CFLAGS) -c -o httpsredir.o httpsredir.c
-	$(CC) $(CFLAGS) $(LDFLAGS) \
+	$(CC) $(H_CFLAGS) -c -o debug.o debug.c
+	$(CC) $(H_CFLAGS) -c -o httpsredir.o httpsredir.c
+	$(CC) $(H_CFLAGS) $(H_LDFLAGS) \
 		-o $(FILENAME) $(OBJ)
 
 clean:
